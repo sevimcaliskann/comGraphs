@@ -7,6 +7,15 @@
 #include <math.h>
 
 
+#include "./models/mesh_bunny.h"
+#include "./models/mesh_cow.h"
+#include "./models/mesh_cube.h"
+#include "./models/mesh_frog.h"
+#include "./models/mesh_knot.h"
+#include "./models/mesh_sphere.h"
+#include "./models/mesh_teapot.h"
+#include "./models/mesh_triceratops.h"
+
 #include "algebra.h"
 #include "shaders.h"
 #include "mesh.h"
@@ -18,6 +27,7 @@ int screen_height = 768;
 
 Mesh *meshList = NULL; // Pointer to linked list of triangle meshes
 Mesh *selectedMesh = NULL;
+Mesh *boundingSpheres = NULL;
 
 
 Camera cam = {{0,0,20}, {0,0,0}, 60, 1, 10000}; // Setup the camera parameters
@@ -51,10 +61,10 @@ void prepareShaderProgram() {
 	glLinkProgram(shprg);
 }
 
-void transformMesh(Mesh *mesh){
+void transformMesh(Mesh *mesh, Matrix mat){
 	HomVector temp;
 	for (int i = 0; i < mesh->nv; i++){
-		temp = MatVecMul(tempT, mesh->vertices[i]);
+		temp = MatVecMul(mat, mesh->vertices[i]);
 		mesh->vertices[i] = { temp.x / temp.w, temp.y / temp.w, temp.z / temp.w };
 	}
 	calculateNorms(mesh);
@@ -86,10 +96,6 @@ void prepareMesh(Mesh *mesh) {
 }
 
 void renderMesh(Mesh *mesh) {
-	// Assignment 1: Apply the transforms from local mesh coordinates to world coordinates here
-	// Combine it with the viewing transform that is pass to the shader below
-	// Pass the viewing transform to the shader
-
 	GLint loc_PV = glGetUniformLocation(shprg, "PV");
 	glUniformMatrix4fv(loc_PV, 1, GL_FALSE, PV.e);
 
@@ -110,7 +116,7 @@ void renderMesh(Mesh *mesh) {
 	glVertexAttribPointer(vNorm, 3, GL_FLOAT, GL_FALSE, 0, (void *)(mesh->nv * 3 *sizeof(float)));
 	
 	// To accomplish wireframe rendering (can be removed to get filled triangles)
-	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL); 
+	//glPolygonMode(GL_FRONT_AND_BACK, GL_FILL); 
 
 	
 	glClear(GL_DEPTH_BUFFER_BIT);
@@ -120,6 +126,7 @@ void renderMesh(Mesh *mesh) {
 	// Draw all triangles
 	glDrawElements(GL_TRIANGLES, mesh->nt * 3, GL_UNSIGNED_INT, NULL); 
 }
+
 void moveCamera(void){
 	T.e[0] = 1.0f; T.e[4] = 0.0f; T.e[8] = 0.0f; T.e[12] = -cam.position.x;
 	T.e[1] = 0.0f; T.e[5] = 1.0f; T.e[9] = 0.0f; T.e[13] = -cam.position.y;
@@ -148,7 +155,7 @@ void moveCamera(void){
 }
 
 void display(void) {
-	Mesh *mesh;
+	Mesh *mesh, *boundingMesh;
 	glClear(GL_COLOR_BUFFER_BIT);
 
 	tempT = ModelViewMatrix(RO.x, RO.y, RO.z, TR, S);
@@ -156,21 +163,31 @@ void display(void) {
 	
 	
 	mesh = meshList;
+	boundingMesh = boundingSpheres;
 	while (mesh != NULL) {
 		if (!selectedMesh || selectedMesh == mesh){
-			transformMesh(mesh);
+			transformMesh(mesh, tempT);
+			transformMesh(boundingMesh, tempT);
 		}
 		prepareMesh(mesh);
+		prepareMesh(boundingMesh);
 		mesh = mesh->next;
+		boundingMesh = boundingMesh->next;
 	}
 	glUseProgram(shprg);
 
 	// render all meshes in the scene
 	mesh = meshList;
-		
+	boundingMesh = boundingSpheres;
+
+	
 	while (mesh != NULL) {
+		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 		renderMesh(mesh);
+		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+		renderMesh(boundingMesh);
 		mesh = mesh->next;
+		boundingMesh = boundingMesh->next;
 	}
 	moveCamera();
 	
@@ -321,15 +338,13 @@ void cleanUp(void) {
 }
 
 // Include data for some triangle meshes (hard coded in struct variables)
-#include "./models/mesh_bunny.h"
-#include "./models/mesh_cow.h"
-#include "./models/mesh_cube.h"
-#include "./models/mesh_frog.h"
-#include "./models/mesh_knot.h"
-#include "./models/mesh_sphere.h"
-#include "./models/mesh_teapot.h"
-#include "./models/mesh_triceratops.h"
 
+void insertBoundingVolumes(Mesh *mesh){
+	Sphere *bs;
+	bs = calculateBoundingSphere(mesh);
+	insertModel(&boundingSpheres, sphere.nov, sphere.verts, sphere.nof, sphere.faces, bs->radius);
+	transformMesh(boundingSpheres, TranslationMatrix(bs->center.x, bs->center.y, bs->center.z));
+}
 
 int main(int argc, char **argv) {
 	
@@ -362,16 +377,31 @@ int main(int argc, char **argv) {
 
 	// Insert the 3D models you want in your scene here in a linked list of meshes
 	// Note that "meshList" is a pointer to the first mesh and new meshes are added to the front of the list
-	
-	//insertModel(&meshList, bunny.nov, bunny.verts, bunny.nof, bunny.faces, 60.0);
-	//insertModel(&meshList, cow.nov, cow.verts, cow.nof, cow.faces, 20.0);
+	/*insertModel(&meshList, bunny.nov, bunny.verts, bunny.nof, bunny.faces, 60.0);
+	insertBoundingVolumes(meshList);*/
+	insertModel(&meshList, cow.nov, cow.verts, cow.nof, cow.faces, 20.0);
+	insertBoundingVolumes(meshList);
 	//insertModel(&meshList, cube.nov, cube.verts, cube.nof, cube.faces, 5.0);
 	//insertModel(&meshList, frog.nov, frog.verts, frog.nof, frog.faces, 2.5);
 	//insertModel(&meshList, knot.nov, knot.verts, knot.nof, knot.faces, 1.0);
-	insertModel(&meshList, sphere.nov, sphere.verts, sphere.nof, sphere.faces, 12.0);
+	//insertModel(&meshList, sphere.nov, sphere.verts, sphere.nof, sphere.faces, 12.0);
 	//insertModel(&meshList, teapot.nov, teapot.verts, teapot.nof, teapot.faces, 3.0);
-	//insertModel(&meshList, triceratops.nov, triceratops.verts, triceratops.nof, triceratops.faces, 3.0);
-	//*selectedMesh = *meshList;
+	insertModel(&meshList, triceratops.nov, triceratops.verts, triceratops.nof, triceratops.faces, 3.0);
+	insertBoundingVolumes(meshList);
+
+	
+	
+	//Mesh *temp = meshList;
+	//Sphere *bS;
+	//while (temp){
+	//	bS = calculateBoundingSphere(temp);
+	//	insertModel(&boundingSpheres, sphere.nov, sphere.verts, sphere.nof, sphere.faces, bS->radius);
+	//	PrintVector("", boundingSpheres->vertices[0]);
+	//	//transformMesh(boundingSpheres, TranslationMatrix(bS->center->x, bS->center->y, bS->center->z));
+	//	PrintVector("", *bS->center);
+	//	temp = temp->next;
+	//}
+	//delete temp, bS;
 	init();
 	glutMainLoop();
 

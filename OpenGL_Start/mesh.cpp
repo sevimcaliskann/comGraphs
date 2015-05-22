@@ -62,7 +62,7 @@ void insertModel(Mesh **list, int nv, float * vArr, int nt, int * tArr, float sc
 	*list = mesh;	
 }
 
-void calculateBoundingSphere(Mesh *mesh){
+Sphere* calculateBoundingSphere(Mesh *mesh){
 	Vector min, max;
 	min = max = mesh->vertices[0];
 	for (int i = 0; i < mesh->nv; i++){
@@ -74,5 +74,13 @@ void calculateBoundingSphere(Mesh *mesh){
 		if (max.z< mesh->vertices[i].z) max.z = mesh->vertices[i].z;
 	}
 	Vector center = { (min.x + max.x) / 2, (min.y + max.y) / 2, (min.z + max.z) / 2 };
-	float radius = Length(Vector{ center.x - min.x, center.y - min.y, center.z-min.z});
+	PrintVector("", center);
+	float radius = 0;
+	for (int i = 0; i < mesh->nv; i++){
+		float length = Length(Vector{ mesh->vertices[i].x - center.x, mesh->vertices[i].y - center.y, mesh->vertices[i].z - center.z });
+		if (length > radius)
+			radius = length;
+	}
+	int rad = (int)(radius + 1);
+	return new Sphere(center, rad);
 }
