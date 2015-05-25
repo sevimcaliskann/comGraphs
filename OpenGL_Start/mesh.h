@@ -10,8 +10,9 @@ typedef struct _Triangle {
 typedef struct _Sphere{
 	Vector center;
 	int radius;
-	_Sphere() :center({0,0,0}), radius(0) {}
-	_Sphere(Vector &c, int r) :center(c), radius(r)
+	_Sphere *next;
+	_Sphere() :center({0,0,0}), radius(0), next(NULL) {}
+	_Sphere(Vector &c, int r, _Sphere *s) :center(c), radius(r), next(s)
 	{}
 }Sphere;
 

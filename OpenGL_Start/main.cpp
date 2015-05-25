@@ -5,6 +5,7 @@
 #include <GL\glew.h>
 #include <GL\freeglut.h>
 #include <math.h>
+#include <time.h>
 
 
 #include "./models/mesh_bunny.h"
@@ -28,6 +29,8 @@ int screen_height = 768;
 Mesh *meshList = NULL; // Pointer to linked list of triangle meshes
 Mesh *selectedMesh = NULL;
 Mesh *boundingSpheres = NULL;
+Sphere *bs;
+bool isVFEnabled = false;
 
 
 Camera cam = {{0,0,20}, {0,0,0}, 60, 1, 10000}; // Setup the camera parameters
@@ -43,7 +46,21 @@ GLuint shprg; // Shader program id
 Matrix V, P, PV, T, tempT = {1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1};
 Vector S = { 1, 1, 1 }, TR = { 0, 0, 0 }, RO = { 0, 0, 0 };
 
-
+bool isVisible(Sphere *sphere){
+	HomVector planes[6] = { {1,0,0,1}, {-1,0,0,1}, 
+							{0,1,0,1}, {0,-1,0,1}, 
+							{0,0,1,1}, {0,0,-1,1} };
+	Matrix transposed = Transpose(PV);
+	for (int i = 0; i < 6; i++){
+		planes[i] = MatVecMul(transposed, { planes[i].x / planes[i].w, planes[i].y / planes[i].w, planes[i].z / planes[i].w });
+		//Vector a = Homogenize(planes[i]);
+		float result = planes[i].x *(sphere->center.x) + planes[i].y*(sphere->center.y) + planes[i].z*(sphere->center.z) + planes[i].w;
+		//float result = a.x *(sphere->center.x) + a.y*(sphere->center.y) + a.z*(sphere->center.z);
+		if (result < (-1)*sphere->radius)
+			return false;
+	}
+	return true;
+}
 
 void prepareShaderProgram() {
 	shprg = glCreateProgram();
@@ -125,6 +142,7 @@ void renderMesh(Mesh *mesh) {
 
 	// Draw all triangles
 	glDrawElements(GL_TRIANGLES, mesh->nt * 3, GL_UNSIGNED_INT, NULL); 
+	glFinish();
 }
 
 void moveCamera(void){
@@ -154,6 +172,10 @@ void moveCamera(void){
 	PV = MatMatMul(P, V);
 }
 
+Vector transformVector(const Vector &a, Matrix m){
+	HomVector hv = MatVecMul(m, a);
+	return Homogenize(hv);
+}
 void display(void) {
 	Mesh *mesh, *boundingMesh;
 	glClear(GL_COLOR_BUFFER_BIT);
@@ -161,37 +183,34 @@ void display(void) {
 	tempT = ModelViewMatrix(RO.x, RO.y, RO.z, TR, S);
 	TR = { 0, 0, 0 }; S = { 1, 1, 1 }; RO = { 0, 0, 0 };
 	
-	
+	moveCamera();
 	mesh = meshList;
 	boundingMesh = boundingSpheres;
+	Sphere *test = bs;
+	clock_t t = clock();
+	glUseProgram(shprg);
 	while (mesh != NULL) {
 		if (!selectedMesh || selectedMesh == mesh){
 			transformMesh(mesh, tempT);
 			transformMesh(boundingMesh, tempT);
+			test->center = transformVector(test->center, tempT);
 		}
-		prepareMesh(mesh);
-		prepareMesh(boundingMesh);
+
+		if (!isVFEnabled || isVisible(test)){
+			prepareMesh(mesh);
+			prepareMesh(boundingMesh);
+			glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+			renderMesh(mesh);
+			glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+			renderMesh(boundingMesh);
+		}
 		mesh = mesh->next;
 		boundingMesh = boundingMesh->next;
+		test = test->next;
 	}
-	glUseProgram(shprg);
-
-	// render all meshes in the scene
-	mesh = meshList;
-	boundingMesh = boundingSpheres;
-
-	
-	while (mesh != NULL) {
-		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-		renderMesh(mesh);
-		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-		renderMesh(boundingMesh);
-		mesh = mesh->next;
-		boundingMesh = boundingMesh->next;
-	}
-	moveCamera();
 	
 	glFlush();
+	std::cout << "With isVFEnabled: " << isVFEnabled << " " << clock() - t << std::endl;
 }
 void changeSize(int w, int h) {
 	screen_width = w;
@@ -230,6 +249,12 @@ void mouse(int button, int state, int x, int y){
 
 void keypress(unsigned char key, int x, int y) {
 	switch(key) {
+	case 'a':
+		isVFEnabled = true;
+		break;
+	case 'A':
+		isVFEnabled = false;
+		break;
 	case 'x':
 		cam.position.x -= 0.2f;
 		break;
@@ -340,14 +365,15 @@ void cleanUp(void) {
 // Include data for some triangle meshes (hard coded in struct variables)
 
 void insertBoundingVolumes(Mesh *mesh){
-	Sphere *bs;
-	bs = calculateBoundingSphere(mesh);
-	insertModel(&boundingSpheres, sphere.nov, sphere.verts, sphere.nof, sphere.faces, bs->radius);
-	transformMesh(boundingSpheres, TranslationMatrix(bs->center.x, bs->center.y, bs->center.z));
+	Sphere *temp;
+	temp = calculateBoundingSphere(mesh);
+	insertModel(&boundingSpheres, sphere.nov, sphere.verts, sphere.nof, sphere.faces, temp->radius);
+	transformMesh(boundingSpheres, TranslationMatrix(temp->center.x, temp->center.y, temp->center.z));
+	temp->next = bs;
+	bs = temp;
 }
 
 int main(int argc, char **argv) {
-	
 	// Setup freeGLUT	
 	glutInit(&argc, argv);
 	glutInitDisplayMode(GLUT_SINGLE | GLUT_RGB);
@@ -377,31 +403,23 @@ int main(int argc, char **argv) {
 
 	// Insert the 3D models you want in your scene here in a linked list of meshes
 	// Note that "meshList" is a pointer to the first mesh and new meshes are added to the front of the list
-	/*insertModel(&meshList, bunny.nov, bunny.verts, bunny.nof, bunny.faces, 60.0);
-	insertBoundingVolumes(meshList);*/
+	insertModel(&meshList, bunny.nov, bunny.verts, bunny.nof, bunny.faces, 60.0);
+	insertBoundingVolumes(meshList);
 	insertModel(&meshList, cow.nov, cow.verts, cow.nof, cow.faces, 20.0);
 	insertBoundingVolumes(meshList);
-	//insertModel(&meshList, cube.nov, cube.verts, cube.nof, cube.faces, 5.0);
-	//insertModel(&meshList, frog.nov, frog.verts, frog.nof, frog.faces, 2.5);
-	//insertModel(&meshList, knot.nov, knot.verts, knot.nof, knot.faces, 1.0);
-	//insertModel(&meshList, sphere.nov, sphere.verts, sphere.nof, sphere.faces, 12.0);
-	//insertModel(&meshList, teapot.nov, teapot.verts, teapot.nof, teapot.faces, 3.0);
+	insertModel(&meshList, cube.nov, cube.verts, cube.nof, cube.faces, 5.0);
+	insertBoundingVolumes(meshList);
+	insertModel(&meshList, frog.nov, frog.verts, frog.nof, frog.faces, 2.5);
+	insertBoundingVolumes(meshList);
+	insertModel(&meshList, knot.nov, knot.verts, knot.nof, knot.faces, 1.0);
+	insertBoundingVolumes(meshList);
+	insertModel(&meshList, sphere.nov, sphere.verts, sphere.nof, sphere.faces, 12.0);
+	insertBoundingVolumes(meshList);
+	insertModel(&meshList, teapot.nov, teapot.verts, teapot.nof, teapot.faces, 3.0);
+	insertBoundingVolumes(meshList);
 	insertModel(&meshList, triceratops.nov, triceratops.verts, triceratops.nof, triceratops.faces, 3.0);
 	insertBoundingVolumes(meshList);
 
-	
-	
-	//Mesh *temp = meshList;
-	//Sphere *bS;
-	//while (temp){
-	//	bS = calculateBoundingSphere(temp);
-	//	insertModel(&boundingSpheres, sphere.nov, sphere.verts, sphere.nof, sphere.faces, bS->radius);
-	//	PrintVector("", boundingSpheres->vertices[0]);
-	//	//transformMesh(boundingSpheres, TranslationMatrix(bS->center->x, bS->center->y, bS->center->z));
-	//	PrintVector("", *bS->center);
-	//	temp = temp->next;
-	//}
-	//delete temp, bS;
 	init();
 	glutMainLoop();
 

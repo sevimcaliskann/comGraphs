@@ -4,6 +4,21 @@
 #include <stdio.h>
 #include "algebra.h"
 
+Matrix Transpose(Matrix M){
+	Matrix m;
+	m.e[0] = M.e[0]; m.e[4] = M.e[1]; m.e[8] = M.e[2]; m.e[12] = M.e[3];
+	m.e[1] = M.e[4]; m.e[5] = M.e[5]; m.e[9] = M.e[6]; m.e[13] = M.e[7];
+	m.e[2] = M.e[8]; m.e[6] = M.e[9]; m.e[10] = M.e[10]; m.e[14] = M.e[11];
+	m.e[3] = M.e[12]; m.e[7] = M.e[13]; m.e[11] = M.e[14]; m.e[15] = M.e[15];
+	return m;
+}
+
+HomVector Normalize(HomVector a){
+	float len = sqrt(a.x*a.x + a.y*a.y + a.z*a.z + a.w*a.w);
+	HomVector v = { a.x / len, a.y / len, a.z / len, a.w/len };
+	return v;
+}
+
 Vector CrossProduct(Vector a, Vector b) {
 	Vector v = { a.y*b.z - a.z*b.y, a.z*b.x - a.x*b.z, a.x*b.y - a.y*b.x };
 	return v;

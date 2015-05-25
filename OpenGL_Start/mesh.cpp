@@ -74,7 +74,6 @@ Sphere* calculateBoundingSphere(Mesh *mesh){
 		if (max.z< mesh->vertices[i].z) max.z = mesh->vertices[i].z;
 	}
 	Vector center = { (min.x + max.x) / 2, (min.y + max.y) / 2, (min.z + max.z) / 2 };
-	PrintVector("", center);
 	float radius = 0;
 	for (int i = 0; i < mesh->nv; i++){
 		float length = Length(Vector{ mesh->vertices[i].x - center.x, mesh->vertices[i].y - center.y, mesh->vertices[i].z - center.z });
@@ -82,5 +81,5 @@ Sphere* calculateBoundingSphere(Mesh *mesh){
 			radius = length;
 	}
 	int rad = (int)(radius + 1);
-	return new Sphere(center, rad);
+	return new Sphere(center, rad, NULL);
 }

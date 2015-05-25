@@ -19,6 +19,7 @@ typedef struct { float x, y, z, w; } HomVector;
 */
 typedef struct matrix { float e[16]; } Matrix;
 
+Matrix Transpose(Matrix M);
 Vector Add(Vector a, Vector b);
 Matrix ModelViewMatrix(float angle_x, float angle_y, float angle_z, Vector translation, Vector scaling);
 bool operator==(Vector &v1, Vector &v2);
@@ -27,6 +28,7 @@ Vector CrossProduct(Vector a, Vector b);
 float DotProduct(Vector a, Vector b);
 float Length(Vector a);
 Vector Normalize(Vector a);
+HomVector Normalize(HomVector a);
 Vector ScalarVecMul(float t, Vector a);
 HomVector MatVecMul(Matrix a, Vector b);
 Vector Homogenize(HomVector a);
