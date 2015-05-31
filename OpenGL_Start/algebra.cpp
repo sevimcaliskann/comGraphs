@@ -187,3 +187,8 @@ Matrix ParlProjectionMatrix(float near, float far, float left, float right, floa
 	return m;
 }
 
+float *convertToArray(const Vector &a){
+	float *x = new float[3];
+	x[0] = a.x; x[1] = a.y; x[2] = a.z;
+	return x;
+}

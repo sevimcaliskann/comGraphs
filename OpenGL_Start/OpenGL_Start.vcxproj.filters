@@ -36,4 +36,15 @@
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
+  <ItemGroup>
+    <None Include="phong.vert">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="gouraud.frag">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="phongshading2.vert">
+      <Filter>Resource Files</Filter>
+    </None>
+  </ItemGroup>
 </Project>

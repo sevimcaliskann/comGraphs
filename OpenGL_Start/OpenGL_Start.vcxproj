@@ -20,6 +20,11 @@
     <ClInclude Include="mesh.h" />
     <ClInclude Include="shaders.h" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="gouraud.frag" />
+    <None Include="phong.vert" />
+    <None Include="phongshading2.vert" />
+  </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{6813434E-135E-422B-9C6D-596A45B6863E}</ProjectGuid>
     <RootNamespace>OpenGL_Start</RootNamespace>

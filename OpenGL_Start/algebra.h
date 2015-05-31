@@ -41,6 +41,7 @@ Matrix ScalingMatrix(float x, float y, float z);
 Matrix RotationMatrix(float angle, Direction dir);
 Matrix PersProjectionMatrix(float near, float far, float left, float right, float bottom, float top);
 Matrix ParlProjectionMatrix(float near, float far, float left, float right, float bottom, float top);
+float *convertToArray(const Vector &a);
 
 #endif
 

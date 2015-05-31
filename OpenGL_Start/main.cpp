@@ -2,10 +2,12 @@
 #define _USE_MATH_DEFINES 
 #include <iostream>
 #include <stdio.h>
+#include <fstream>
 #include <GL\glew.h>
 #include <GL\freeglut.h>
 #include <math.h>
 #include <time.h>
+#include <string>
 
 
 #include "./models/mesh_bunny.h"
@@ -30,7 +32,10 @@ Mesh *meshList = NULL; // Pointer to linked list of triangle meshes
 Mesh *selectedMesh = NULL;
 Mesh *boundingSpheres = NULL;
 Sphere *bs;
+LightSource lights[2];
 bool isVFEnabled = false;
+bool enableBS = false;
+int multipleLight = 0;
 
 
 Camera cam = {{0,0,20}, {0,0,0}, 60, 1, 10000}; // Setup the camera parameters
@@ -62,20 +67,63 @@ bool isVisible(Sphere *sphere){
 	return true;
 }
 
+std::string readFile(const char *filePath) {
+	std::string content;
+	std::ifstream fileStream(filePath, std::ios::in);
+
+	if (!fileStream.is_open()) {
+		std::cerr << "Could not read file " << filePath << ". File does not exist." << std::endl;
+		return "";
+	}
+
+	std::string line = "";
+	while (!fileStream.eof()) {
+		std::getline(fileStream, line);
+		content.append(line + "\n");
+	}
+
+	fileStream.close();
+	return content;
+}
+
+
 void prepareShaderProgram() {
+	GLint compiled, linked;
 	shprg = glCreateProgram();
 	GLuint fs = glCreateShader(GL_FRAGMENT_SHADER);
-	glShaderSource(fs, 1, fs_src, NULL);
+	std::string fragShaderStr = readFile("C:/Users/sevimcaliskan/Documents/visual studio 2013/Projects/OpenGL_Start/OpenGL_Start/gouraud.frag");
+	const char *fragShaderSrc = fragShaderStr.c_str();
+	glShaderSource(fs, 1, &fragShaderSrc, NULL);
 	glCompileShader(fs);
+	glGetShaderiv(fs, GL_COMPILE_STATUS, &compiled);
+	if (!compiled){
+		glGetShaderiv(fs, GL_INFO_LOG_LENGTH, &compiled);
+		GLchar *info = new GLchar[compiled];
+		glGetShaderInfoLog(fs, compiled, &compiled, info);
+		printf(info);
+		delete info;
+	}
 
 	GLuint vs = glCreateShader(GL_VERTEX_SHADER);
-	glShaderSource(vs, 1, vs_src, NULL);
+	std::string vertShaderStr = readFile("C:/Users/sevimcaliskan/Documents/visual studio 2013/Projects/OpenGL_Start/OpenGL_Start/phongshading2.vert");
+	const char *vertShaderSrc = vertShaderStr.c_str();
+	glShaderSource(vs, 1, &vertShaderSrc, NULL);
 	glCompileShader(vs);
+	glGetShaderiv(vs, GL_COMPILE_STATUS, &compiled);
+	if (!compiled){
+		glGetShaderiv(vs, GL_INFO_LOG_LENGTH, &compiled);
+		GLchar *info = new GLchar[compiled];
+		glGetShaderInfoLog(vs, compiled, &compiled, info);
+		printf(info);
+		delete info;
+	}
 
 	glAttachShader(shprg, vs);
 	glAttachShader(shprg, fs);
 
 	glLinkProgram(shprg);
+	glGetProgramiv(shprg, GL_LINK_STATUS, &linked);
+	if (!linked) {printf("Link Error Shader Program!\n"); }
 }
 
 void transformMesh(Mesh *mesh, Matrix mat){
@@ -112,10 +160,51 @@ void prepareMesh(Mesh *mesh) {
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeTris, (void *)mesh->triangles, GL_STATIC_DRAW);
 }
 
+void addLightSource(LightSource light, std::string lightName){
+	GLint lightSource = glGetUniformLocation(shprg, lightName.append(".ambient").c_str());
+	glUniform3fv(lightSource, 1, convertToArray(light.ambient));
+
+	lightSource = glGetUniformLocation(shprg, lightName.append(".diffuse").c_str());
+	glUniform3fv(lightSource, 1, convertToArray(light.diffuse));
+
+	lightSource = glGetUniformLocation(shprg, lightName.append(".specular").c_str());
+	glUniform3fv(lightSource, 1, convertToArray( light.specular ));
+
+	lightSource = glGetUniformLocation(shprg, lightName.append(".position").c_str());
+	glUniform3fv(lightSource, 1, convertToArray(light.position));
+}
+void addMaterial(){
+	GLint matSource = glGetUniformLocation(shprg, "mat.ambient");
+	glUniform3fv(matSource, 1, convertToArray({ 0.3, 0.9, 0.6 }));
+
+	matSource = glGetUniformLocation(shprg, "mat.diffuse");
+	glUniform3fv(matSource, 1, convertToArray({ 1, 1, 1 }));
+
+	matSource = glGetUniformLocation(shprg, "mat.specular");
+	glUniform3fv(matSource, 1, convertToArray({ 1, 1, 1 }));
+
+	matSource = glGetUniformLocation(shprg, "mat.shininess");
+	float x = 0.5;
+	glUniform1f(matSource, x);
+}
 void renderMesh(Mesh *mesh) {
 	GLint loc_PV = glGetUniformLocation(shprg, "PV");
 	glUniformMatrix4fv(loc_PV, 1, GL_FALSE, PV.e);
 
+	GLint loc_cam = glGetUniformLocation(shprg, "camPosition");
+	glUniform3fv(loc_cam, 1, convertToArray(cam.position));
+	
+	GLint loc_mult = glGetUniformLocation(shprg, "multipleLight");
+	glUniform1i(loc_mult, multipleLight);
+	addLightSource(lights[0], "light1");
+	if (multipleLight){
+		std::cout << "mdakda" << std::endl;
+		//PrintVector("", lights[1].ambient);
+		addLightSource(lights[1], "light2");
+	}
+	else
+		addLightSource(LightSource(true), "light2");
+	addMaterial();
 
 	// Select current resources 
 	glBindBuffer(GL_ARRAY_BUFFER, mesh->vbo);
@@ -142,7 +231,7 @@ void renderMesh(Mesh *mesh) {
 
 	// Draw all triangles
 	glDrawElements(GL_TRIANGLES, mesh->nt * 3, GL_UNSIGNED_INT, NULL); 
-	glFinish();
+	//glFinish();
 }
 
 void moveCamera(void){
@@ -188,7 +277,6 @@ void display(void) {
 	boundingMesh = boundingSpheres;
 	Sphere *test = bs;
 	clock_t t = clock();
-	glUseProgram(shprg);
 	while (mesh != NULL) {
 		if (!selectedMesh || selectedMesh == mesh){
 			transformMesh(mesh, tempT);
@@ -201,15 +289,20 @@ void display(void) {
 			prepareMesh(boundingMesh);
 			glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 			renderMesh(mesh);
-			glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-			renderMesh(boundingMesh);
+			if (enableBS){
+				glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+				renderMesh(boundingMesh);
+			}
 		}
+		else
+			std::cout << "NOT RENDERING" << std::endl;
 		mesh = mesh->next;
 		boundingMesh = boundingMesh->next;
 		test = test->next;
 	}
-	
-	glFlush();
+	glUseProgram(shprg);
+	//glFlush();
+	glFinish();
 	std::cout << "With isVFEnabled: " << isVFEnabled << " " << clock() - t << std::endl;
 }
 void changeSize(int w, int h) {
@@ -254,6 +347,12 @@ void keypress(unsigned char key, int x, int y) {
 		break;
 	case 'A':
 		isVFEnabled = false;
+		break;
+	case 'r':
+		enableBS = true;
+		break;
+	case 'R':
+		enableBS = false;
 		break;
 	case 'x':
 		cam.position.x -= 0.2f;
@@ -338,6 +437,9 @@ void keypress(unsigned char key, int x, int y) {
 	case 'q':
 		exit(0);
 		break;
+	case '1':
+		multipleLight = !multipleLight;
+		break;
 	}
 	glutPostRedisplay();
 }
@@ -403,20 +505,20 @@ int main(int argc, char **argv) {
 
 	// Insert the 3D models you want in your scene here in a linked list of meshes
 	// Note that "meshList" is a pointer to the first mesh and new meshes are added to the front of the list
-	insertModel(&meshList, bunny.nov, bunny.verts, bunny.nof, bunny.faces, 60.0);
-	insertBoundingVolumes(meshList);
-	insertModel(&meshList, cow.nov, cow.verts, cow.nof, cow.faces, 20.0);
-	insertBoundingVolumes(meshList);
-	insertModel(&meshList, cube.nov, cube.verts, cube.nof, cube.faces, 5.0);
-	insertBoundingVolumes(meshList);
-	insertModel(&meshList, frog.nov, frog.verts, frog.nof, frog.faces, 2.5);
-	insertBoundingVolumes(meshList);
-	insertModel(&meshList, knot.nov, knot.verts, knot.nof, knot.faces, 1.0);
-	insertBoundingVolumes(meshList);
-	insertModel(&meshList, sphere.nov, sphere.verts, sphere.nof, sphere.faces, 12.0);
-	insertBoundingVolumes(meshList);
-	insertModel(&meshList, teapot.nov, teapot.verts, teapot.nof, teapot.faces, 3.0);
-	insertBoundingVolumes(meshList);
+	//insertModel(&meshList, bunny.nov, bunny.verts, bunny.nof, bunny.faces, 60.0);
+	//insertBoundingVolumes(meshList);
+	//insertModel(&meshList, cow.nov, cow.verts, cow.nof, cow.faces, 20.0);
+	//insertBoundingVolumes(meshList);
+	//insertModel(&meshList, cube.nov, cube.verts, cube.nof, cube.faces, 5.0);
+	//insertBoundingVolumes(meshList);
+	//insertModel(&meshList, frog.nov, frog.verts, frog.nof, frog.faces, 2.5);
+	//insertBoundingVolumes(meshList);
+	//insertModel(&meshList, knot.nov, knot.verts, knot.nof, knot.faces, 1.0);
+	//insertBoundingVolumes(meshList);
+	//insertModel(&meshList, sphere.nov, sphere.verts, sphere.nof, sphere.faces, 12.0);
+	//insertBoundingVolumes(meshList);
+	//insertModel(&meshList, teapot.nov, teapot.verts, teapot.nof, teapot.faces, 3.0);
+	//insertBoundingVolumes(meshList);
 	insertModel(&meshList, triceratops.nov, triceratops.verts, triceratops.nof, triceratops.faces, 3.0);
 	insertBoundingVolumes(meshList);
 
