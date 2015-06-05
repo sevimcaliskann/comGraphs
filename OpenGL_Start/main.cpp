@@ -8,6 +8,7 @@
 #include <math.h>
 #include <time.h>
 #include <string>
+#include <random>
 
 
 #include "./models/mesh_bunny.h"
@@ -32,10 +33,10 @@ Mesh *meshList = NULL; // Pointer to linked list of triangle meshes
 Mesh *selectedMesh = NULL;
 Mesh *boundingSpheres = NULL;
 Sphere *bs;
-LightSource lights[2];
 bool isVFEnabled = false;
 bool enableBS = false;
 int multipleLight = 0;
+int shader = 0;
 
 
 Camera cam = {{0,0,20}, {0,0,0}, 60, 1, 10000}; // Setup the camera parameters
@@ -50,6 +51,13 @@ GLuint shprg; // Shader program id
 // PV = P * V
 Matrix V, P, PV, T, tempT = {1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1};
 Vector S = { 1, 1, 1 }, TR = { 0, 0, 0 }, RO = { 0, 0, 0 };
+extern long int getSeed(){
+	std::random_device rd;
+	std::mt19937 gen(rd());
+	std::uniform_int_distribution<> dis(0, RAND_MAX);
+	return dis(gen);
+}
+
 
 bool isVisible(Sphere *sphere){
 	HomVector planes[6] = { {1,0,0,1}, {-1,0,0,1}, 
@@ -91,7 +99,21 @@ void prepareShaderProgram() {
 	GLint compiled, linked;
 	shprg = glCreateProgram();
 	GLuint fs = glCreateShader(GL_FRAGMENT_SHADER);
-	std::string fragShaderStr = readFile("C:/Users/sevimcaliskan/Documents/visual studio 2013/Projects/OpenGL_Start/OpenGL_Start/gouraud.frag");
+	std::string fragShaderStr;// = readFile("C:/Users/sevimcaliskan/Documents/visual studio 2013/Projects/OpenGL_Start/OpenGL_Start/shaders/Gouraudshadingfs.txt");
+	switch (shader){
+	case 0:
+		fragShaderStr = readFile("C:/Users/sevimcaliskan/Documents/visual studio 2013/Projects/OpenGL_Start/OpenGL_Start/shaders/Gouraudshadingfs.txt");
+		std::cout << "0" << std::endl;
+		break;
+	case 1:
+		fragShaderStr = readFile("C:/Users/sevimcaliskan/Documents/visual studio 2013/Projects/OpenGL_Start/OpenGL_Start/shaders/PhongShadingfs.txt");
+		std::cout << "1" << std::endl;
+		break;
+	case 2:
+		fragShaderStr = readFile("C:/Users/sevimcaliskan/Documents/visual studio 2013/Projects/OpenGL_Start/OpenGL_Start/shaders/cartoonshadingfs.txt");
+		std::cout << "2" << std::endl;
+		break;
+	}
 	const char *fragShaderSrc = fragShaderStr.c_str();
 	glShaderSource(fs, 1, &fragShaderSrc, NULL);
 	glCompileShader(fs);
@@ -105,7 +127,22 @@ void prepareShaderProgram() {
 	}
 
 	GLuint vs = glCreateShader(GL_VERTEX_SHADER);
-	std::string vertShaderStr = readFile("C:/Users/sevimcaliskan/Documents/visual studio 2013/Projects/OpenGL_Start/OpenGL_Start/phongshading2.vert");
+	std::string vertShaderStr;
+	switch (shader){
+	case 0:
+		vertShaderStr = readFile("C:/Users/sevimcaliskan/Documents/visual studio 2013/Projects/OpenGL_Start/OpenGL_Start/shaders/Gouraudshadingvs.txt");
+		std::cout << "0" << std::endl;
+		break;
+	case 1:
+		vertShaderStr = readFile("C:/Users/sevimcaliskan/Documents/visual studio 2013/Projects/OpenGL_Start/OpenGL_Start/shaders/PhoneShadingvs.txt");
+		std::cout << "1" << std::endl;
+		break;
+	case 2:
+		vertShaderStr = readFile("C:/Users/sevimcaliskan/Documents/visual studio 2013/Projects/OpenGL_Start/OpenGL_Start/shaders/cartoonshadingvs.txt");
+		std::cout << "2" << std::endl;
+		break;
+	}
+	
 	const char *vertShaderSrc = vertShaderStr.c_str();
 	glShaderSource(vs, 1, &vertShaderSrc, NULL);
 	glCompileShader(vs);
@@ -160,51 +197,16 @@ void prepareMesh(Mesh *mesh) {
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeTris, (void *)mesh->triangles, GL_STATIC_DRAW);
 }
 
-void addLightSource(LightSource light, std::string lightName){
-	GLint lightSource = glGetUniformLocation(shprg, lightName.append(".ambient").c_str());
-	glUniform3fv(lightSource, 1, convertToArray(light.ambient));
 
-	lightSource = glGetUniformLocation(shprg, lightName.append(".diffuse").c_str());
-	glUniform3fv(lightSource, 1, convertToArray(light.diffuse));
-
-	lightSource = glGetUniformLocation(shprg, lightName.append(".specular").c_str());
-	glUniform3fv(lightSource, 1, convertToArray( light.specular ));
-
-	lightSource = glGetUniformLocation(shprg, lightName.append(".position").c_str());
-	glUniform3fv(lightSource, 1, convertToArray(light.position));
-}
-void addMaterial(){
-	GLint matSource = glGetUniformLocation(shprg, "mat.ambient");
-	glUniform3fv(matSource, 1, convertToArray({ 0.3, 0.9, 0.6 }));
-
-	matSource = glGetUniformLocation(shprg, "mat.diffuse");
-	glUniform3fv(matSource, 1, convertToArray({ 1, 1, 1 }));
-
-	matSource = glGetUniformLocation(shprg, "mat.specular");
-	glUniform3fv(matSource, 1, convertToArray({ 1, 1, 1 }));
-
-	matSource = glGetUniformLocation(shprg, "mat.shininess");
-	float x = 0.5;
-	glUniform1f(matSource, x);
-}
 void renderMesh(Mesh *mesh) {
 	GLint loc_PV = glGetUniformLocation(shprg, "PV");
 	glUniformMatrix4fv(loc_PV, 1, GL_FALSE, PV.e);
 
-	GLint loc_cam = glGetUniformLocation(shprg, "camPosition");
+	GLint loc_cam = glGetUniformLocation(shprg, "camPos");
 	glUniform3fv(loc_cam, 1, convertToArray(cam.position));
-	
-	GLint loc_mult = glGetUniformLocation(shprg, "multipleLight");
-	glUniform1i(loc_mult, multipleLight);
-	addLightSource(lights[0], "light1");
-	if (multipleLight){
-		std::cout << "mdakda" << std::endl;
-		//PrintVector("", lights[1].ambient);
-		addLightSource(lights[1], "light2");
-	}
-	else
-		addLightSource(LightSource(true), "light2");
-	addMaterial();
+
+	GLint multiple = glGetUniformLocation(shprg, "multiple");
+	glUniform1i(multiple, multipleLight);
 
 	// Select current resources 
 	glBindBuffer(GL_ARRAY_BUFFER, mesh->vbo);
@@ -342,6 +344,10 @@ void mouse(int button, int state, int x, int y){
 
 void keypress(unsigned char key, int x, int y) {
 	switch(key) {
+	case '2':
+		shader = (shader + 1) % 3;
+		prepareShaderProgram();
+		break;
 	case 'a':
 		isVFEnabled = true;
 		break;
@@ -517,10 +523,10 @@ int main(int argc, char **argv) {
 	//insertBoundingVolumes(meshList);
 	//insertModel(&meshList, sphere.nov, sphere.verts, sphere.nof, sphere.faces, 12.0);
 	//insertBoundingVolumes(meshList);
-	//insertModel(&meshList, teapot.nov, teapot.verts, teapot.nof, teapot.faces, 3.0);
-	//insertBoundingVolumes(meshList);
-	insertModel(&meshList, triceratops.nov, triceratops.verts, triceratops.nof, triceratops.faces, 3.0);
+	insertModel(&meshList, teapot.nov, teapot.verts, teapot.nof, teapot.faces, 3.0);
 	insertBoundingVolumes(meshList);
+	//insertModel(&meshList, triceratops.nov, triceratops.verts, triceratops.nof, triceratops.faces, 3.0);
+	//insertBoundingVolumes(meshList);
 
 	init();
 	glutMainLoop();

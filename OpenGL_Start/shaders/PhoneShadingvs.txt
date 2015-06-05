@@ -1,0 +1,22 @@
+#version 400 core                                                 
+ in vec3 vPos;  
+in vec3 vNorm;
+
+out vec3 vPos1;  
+out vec3 vNorm1;
+
+ uniform mat4 PV;
+
+ uniform vec3 camPos;  
+ uniform int multiple;
+
+void main(void)                                                  
+{  
+vPos1=vPos;
+
+vNorm1=vNorm;
+
+gl_Position = PV * vec4(vPos1, 1.0f);
+
+
+}

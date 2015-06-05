@@ -37,13 +37,24 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <None Include="phong.vert">
+    <Text Include="shaders\cartoonshadingfs.txt">
+      <Filter>Resource Files</Filter>
+    </Text>
+    <Text Include="shaders\cartoonshadingvs.txt">
+      <Filter>Resource Files</Filter>
+    </Text>
+    <Text Include="shaders\PhoneShadingvs.txt">
+      <Filter>Resource Files</Filter>
+    </Text>
+    <Text Include="shaders\PhongShadingfs.txt">
+      <Filter>Resource Files</Filter>
+    </Text>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="shaders\Gouraudshadingfs.txt">
       <Filter>Resource Files</Filter>
     </None>
-    <None Include="gouraud.frag">
-      <Filter>Resource Files</Filter>
-    </None>
-    <None Include="phongshading2.vert">
+    <None Include="shaders\Gouraudshadingvs.txt">
       <Filter>Resource Files</Filter>
     </None>
   </ItemGroup>

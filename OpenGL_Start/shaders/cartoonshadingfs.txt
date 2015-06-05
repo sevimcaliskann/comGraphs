@@ -1,0 +1,157 @@
+#version 400 core                                                                                                                                                                                                          
+ in vec3 vPos1;                                                    
+ in vec3 vNorm1;                                                   
+                                                  
+ uniform mat4 PV;
+ uniform int multiple;
+
+
+uniform vec3 camPos; 
+
+out vec4 fColor; 
+ 
+
+vec3 lPos1 = vec3(-10.0, -10.0, -10.0); 
+vec3 lPos2 = vec3(10.0, 10.0, 10.0); 
+
+vec3 Id = vec3(1.0, 1.0, 0.0);   
+vec3 Ia = vec3(1.0, 1.0, 0.0);  
+vec3 Is = vec3(1.0, 1.0, 1.0);    
+
+vec3 Ka = vec3(0.5, 0.5, 0.5);   
+vec3 Kd = vec3(0.5, 0.5, 0.5);     
+vec3 Ks = vec3(0.5, 0.5, 0.5);  
+
+float s=15;
+//25
+
+
+                                                                                                               
+void main(void)                                                  
+{  
+
+vec3 n=vNorm1;
+ 
+
+vec3 v1 = vec3(camPos.x-vPos1.x,camPos.y-vPos1.y,camPos.z-vPos1.z);
+
+vec3 v=normalize(v1);
+
+
+vec3 l1= vec3(lPos1.x-vPos1.x,lPos1.y-vPos1.y,lPos1.z-vPos1.z);  
+
+vec3 nl1=normalize(l1); 
+
+
+ 
+
+vec3 l2= vec3(lPos2.x-vPos1.x,lPos2.y-vPos1.y,lPos2.z-vPos1.z);  
+
+vec3 nl2=normalize(l2); 
+
+
+vec3 R1=reflect(-nl1,n);
+
+vec3 r1=normalize(R1);
+
+
+vec3 R2=reflect(-nl2,n);
+
+vec3 r2=normalize(R2);
+
+
+ 
+
+float cosAngIncidence1 = max(dot(n, nl1),0);
+
+cosAngIncidence1 = clamp(cosAngIncidence1, 0, 1);
+
+
+float cosAngIncidence2 = max(dot(n, nl2),0);
+
+cosAngIncidence2 = clamp(cosAngIncidence2, 0, 1);
+
+
+
+float phongTerm1 = max(dot(r1, v),0);
+
+phongTerm1 = clamp(phongTerm1, 0, 1);
+
+phongTerm1 = cosAngIncidence1 != 0.0 ? phongTerm1 : 0.0;
+
+
+float phongTerm2 = max(dot(r2, v),0);
+
+phongTerm2 = clamp(phongTerm2, 0, 1);
+
+phongTerm2 = cosAngIncidence2 != 0.0 ? phongTerm2 : 0.0;
+
+
+
+vec3 IA=vec3(Ia.x*Ka.x, Ia.y*Ka.y, Ia.z*Ka.z);
+
+vec3 ID1= vec3(cosAngIncidence1 *Id.x*Kd.x, cosAngIncidence1 *Id.y*Kd.y,cosAngIncidence1 *Id.z*Kd.z);
+
+vec3 ID2= vec3(cosAngIncidence2 *Id.x*Kd.x, cosAngIncidence2 *Id.y*Kd.y,cosAngIncidence2 *Id.z*Kd.z);
+
+
+
+vec3 IS1= vec3((pow (phongTerm1 ,s))*Is.x*Ks.x,(pow (phongTerm1 ,s))*Is.y*Ks.y,(pow (phongTerm1 ,s))*Is.z*Ks.z);
+vec3 IS2= vec3((pow (phongTerm2 ,s))*Is.x*Ks.x,(pow (phongTerm2 ,s))*Is.y*Ks.y,(pow (phongTerm2 ,s))*Is.z*Ks.z);
+
+vec4 I;
+if(multiple==1)
+	I= vec4(IA+ID1+IS1+ID2+IS2,1.0); 
+else
+	I= vec4(IA+ID1+IS1,1.0); 
+
+
+if (I.x > 0.95)
+		I.x = 1.0;
+
+	else if (I.x > 0.5)
+
+		I.x = 0.6;
+
+	else if (I.x > 0.25)
+
+		I.x = 0.4;
+
+	else
+		I.x = 0.15;
+
+if (I.y > 0.95)
+		fColor = vec4(1.0,0.5,0.5,1.0);
+	else if (I.y > 0.5)
+		fColor = vec4(0.6,0.3,0.3,1.0);
+	else if (I.y > 0.25)
+		fColor = vec4(0.4,0.2,0.2,1.0);
+	else
+		fColor = vec4(0.2,0.1,0.1,1.0);
+
+if (I.z > 0.95)
+		fColor = vec4(1.0,0.5,0.5,1.0);
+	else if (I.z > 0.5)
+		fColor = vec4(0.6,0.3,0.3,1.0);
+	else if (I.z > 0.25)
+		fColor = vec4(0.4,0.2,0.2,1.0);
+	else
+		fColor = vec4(0.2,0.1,0.1,1.0);
+                                                             
+I = I*vec4(1.0,1.0,0.0,1.0);
+fColor=I; 
+                                             
+}  
+
+
+
+
+
+
+
+    
+
+ 
+
+   
+

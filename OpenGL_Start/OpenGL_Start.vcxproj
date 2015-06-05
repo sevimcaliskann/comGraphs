@@ -21,9 +21,14 @@
     <ClInclude Include="shaders.h" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="gouraud.frag" />
-    <None Include="phong.vert" />
-    <None Include="phongshading2.vert" />
+    <Text Include="shaders\cartoonshadingfs.txt" />
+    <Text Include="shaders\cartoonshadingvs.txt" />
+    <Text Include="shaders\PhoneShadingvs.txt" />
+    <Text Include="shaders\PhongShadingfs.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="shaders\Gouraudshadingfs.txt" />
+    <None Include="shaders\Gouraudshadingvs.txt" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{6813434E-135E-422B-9C6D-596A45B6863E}</ProjectGuid>

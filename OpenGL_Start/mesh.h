@@ -2,7 +2,7 @@
 #define _MESH_H_
 
 #include "algebra.h"
-
+extern long int getSeed();
 typedef struct _Triangle {
 	int vInds[3]; //vertex indices
 } Triangle;
@@ -43,21 +43,13 @@ typedef struct lightSource {
 	Vector specular;             // Scli
 	Vector position;             // Ppli
 	lightSource(){
+		srand(getSeed());
 		float R1 = float(rand() % 1000) / 1000;
 		float R2 = float(rand() % 1000) / 1000;
 		float R3 = float(rand() % 1000) / 1000;
-		ambient = { R1, R2, R3 };
-		R1 = float(rand() % 1000) / 1000;
-		R2 = float(rand() % 1000) / 1000;
-		R3 = float(rand() % 1000) / 1000;
-		diffuse = { R1, R2, R3 };
-		R1 = float(rand() % 1000) / 1000;
-		R2 = float(rand() % 1000) / 1000;
-		R3 = float(rand() % 1000) / 1000;
-		specular = { R1, R2, R3 };
-		R1 = float(rand() % 1000) / 1000;
-		R2 = float(rand() % 1000) / 1000;
-		R3 = float(rand() % 1000) / 1000;
+		ambient = { 0.8, 0.8, 0.8 };
+		diffuse = { 0.7, 0.9, 0.4 };
+		specular = { 0.3, 1, 1 };
 		position = { R1, R2, R3 };
 	}
 	lightSource(bool empty){
